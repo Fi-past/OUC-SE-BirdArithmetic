@@ -10,13 +10,12 @@ import matplotlib.pyplot as plt
 
 # 训练集预处理
 preprocessTrain = transforms.Compose([
-    # transforms.Resize([224, 224]),
-    transforms.Resize([230, 230]),
-    transforms.RandomCrop(224),
-    transforms.RandomHorizontalFlip(p=0.3),
-    transforms.RandomVerticalFlip(p=0.3),
-    transforms.RandomRotation(30),
-    transforms.ColorJitter(brightness=0.1, contrast=0.1, hue=0.1),
+    # transforms.Resize([230, 230]),
+    transforms.Resize([224, 224]),
+    # transforms.RandomHorizontalFlip(p=0.08),
+    # transforms.RandomVerticalFlip(p=0.08),
+    # transforms.RandomRotation(15),
+    # transforms.ColorJitter(brightness=0.05, contrast=0.05, hue=0.05),
 
     transforms.ToTensor(),
     transforms.Normalize(

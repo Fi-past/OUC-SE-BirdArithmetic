@@ -30,20 +30,24 @@ if __name__ == "__main__":
     bird_data_Valset=birdTrainDataSet(imgValPath,txtClassPath,False)
 
     # 获取dataloader
-    trainloader = DataLoader(bird_data_Trainset,batch_size=180,shuffle=True,num_workers=6)
-    valloader = DataLoader(bird_data_Valset,batch_size=180,shuffle=False,num_workers=6)
+    b_s=512
+    trainloader = DataLoader(bird_data_Trainset,batch_size=b_s,shuffle=True,num_workers=2)
+    valloader = DataLoader(bird_data_Valset,batch_size=b_s,shuffle=False,num_workers=2)
 
     # 获取预训练的denseNet模型
     denseNetModel = getImageNet()
     # 交叉熵损失函数
-    criterion = nn.CrossEntropyLoss() 
+    criterion = nn.CrossEntropyLoss()
     # 优化器
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),  lr=0.001)
+    # optimizer=optim.SGD(denseNetModel.parameters(), lr=0.001, momentum=0.9, factor=0.6)
+    lr=0.001
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
 
     # 准备模型训练
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     path='../model/bird_v1.pt'
+    path_new='../model/bird_new.pt'
     if os.path.exists(path):
         denseNetModel = torch.load(path)
         print('加载先前模型成功')
@@ -51,6 +55,9 @@ if __name__ == "__main__":
         print('未加载原有模型训练')
 
     epochNum=20
+
+    # 在内存里面
+    maxValAcc=65
     index_to_classes=getClassFromTxt(txtClassPath)
     denseNetModel=denseNetModel.to(device)
 
@@ -60,6 +67,7 @@ if __name__ == "__main__":
         denseNetModel.train()
         train_loss=0
         train_correct,train_total=0,0
+        train_num=0
 
         for batch, (data, target) in enumerate(trainloader):
             data=data.to(device)
@@ -79,20 +87,23 @@ if __name__ == "__main__":
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
-            train_loss+=loss.item()
 
-            if batch%10==0:
-                print(f'单batch：第{epoch+1}个epoch中第{batch}次迭代,训练集准确率为{100*batchCorrect/batchSize}%')
+            train_loss+=loss.item()
+            train_num+=1
+
+            if batch%5==0 and batch!=0:
+                print(f'单batch：第{epoch+1}个epoch中训练到第{batch*b_s}个图片,训练集准确率为{100*train_correct/train_total}%')
             
         print('-'*35)
-        print(f'epoch：第{epoch+1}次迭代,训练集准确率为{100*train_correct/train_total}%,loss为{train_loss}')
+        print(f'epoch：第{epoch+1}次迭代,训练集准确率为{100*train_correct/train_total}%,loss为{train_loss/train_num}')
 
         # 进行测试
         denseNetModel.eval()
         test_loss=0
         test_correct,test_total=0,0
-        # 注意这个maxValAcc是在内存中的
-        maxValAcc,valAcc=0,0
+
+        valAcc=0
+        val_num=0
 
         with torch.no_grad():
             for batch, (data, target) in enumerate(valloader):
@@ -106,11 +117,14 @@ if __name__ == "__main__":
 
                 loss = criterion(output, target)
                 test_loss+=loss
+                val_num+=1
                 test_correct += batchCorrect
                 test_total += batchSize
 
+
         valAcc=100*test_correct/test_total
-        print(f'epoch：第{epoch+1}次迭代,验证集准确率为{valAcc}%，loss为{test_loss}')
+
+        print(f'epoch：第{epoch+1}次迭代,验证集准确率为{valAcc}%，loss为{test_loss/val_num}')
         print('-'*35)
 
         if valAcc > maxValAcc:
@@ -120,3 +134,11 @@ if __name__ == "__main__":
             print()
             print('模型更新成功~')
             print()
+        elif abs(valAcc-maxValAcc)<0.5:
+          lr=lr*0.9
+          optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
+          print('优化器更新成功')
+        else:
+          pass
+        
+        torch.save(denseNetModel,path_new)

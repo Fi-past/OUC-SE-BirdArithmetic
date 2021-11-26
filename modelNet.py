@@ -17,6 +17,7 @@ def getImageNet():
     classifier = nn.Sequential(OrderedDict([
                             ('Linear1_wbq', nn.Linear(1024, 512)),
                             ('relu', nn.ReLU()),
+                            ('relu', nn.Dropout2d()),
                             ('Linear2_wbq', nn.Linear(512, 200)),
                             ]))
 
