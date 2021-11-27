@@ -29,9 +29,16 @@ if __name__ == "__main__":
     bird_data_Trainset=birdTrainDataSet(imgTrainPath,txtClassPath,True)
     bird_data_Valset=birdTrainDataSet(imgValPath,txtClassPath,False)
 
+    weights=[]
+    for data, label in bird_data_Trainset:
+        weights.append(bird_data_Trainset.class_num_list[label])
+
+    # 注意这里的weights应为所有样本的权重序列，其长度为所有样本长度
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(bird_data_Trainset),replacement=True)
+
     # 获取dataloader
     b_s=512
-    trainloader = DataLoader(bird_data_Trainset,batch_size=b_s,shuffle=True,num_workers=2)
+    trainloader = DataLoader(bird_data_Trainset,batch_size=b_s,num_workers=2, sampler = sampler)
     valloader = DataLoader(bird_data_Valset,batch_size=b_s,shuffle=False,num_workers=2)
 
     # 获取预训练的denseNet模型
@@ -57,7 +64,7 @@ if __name__ == "__main__":
     epochNum=20
 
     # 在内存里面
-    maxValAcc=65
+    maxValAcc=0
     index_to_classes=getClassFromTxt(txtClassPath)
     denseNetModel=denseNetModel.to(device)
 
@@ -135,7 +142,7 @@ if __name__ == "__main__":
             print('模型更新成功~')
             print()
         elif abs(valAcc-maxValAcc)<0.5:
-          lr=lr*0.9
+          lr=lr*0.8
           optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
           print('优化器更新成功')
         else:

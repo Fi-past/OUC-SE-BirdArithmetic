@@ -36,11 +36,11 @@ preprocessVal_Test = transforms.Compose([
 if __name__ == "__main__":
 
     imgTestPath='../data/bird/test'
-    path='../model/bird_v1_densenet121_76_58.pt'
+    path='../model/bird_v1_densenet121_91_66.pt'
 
-    img_names=getImgPath(imgTestPath)
+    # img_names=getImgPath(imgTestPath)
 
-    test_dataset =torchvision.datasets.ImageFolder(root=imgTestPath,transform=preprocessVal_Test)
+    test_dataset =torchvision.datasets.ImageFolder(imgTestPath,transform=preprocessVal_Test)
     test_loader =DataLoader(test_dataset,batch_size=1, shuffle=False,num_workers=4)
     
     denseNetModel = torch.load(path)

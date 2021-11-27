@@ -86,5 +86,5 @@ def getResult(txtClassPath,modelPath,path):
 
 txtClassPath='../data/bird/classes.txt'
 path='../data/test/011.Rusty_Blackbird_242.jpg'
-modelPath='../model/bird_v1_densenet121_76_58.pt'
+modelPath='../model/bird_v1_densenet121_91_66.pt'
 getResult(txtClassPath,modelPath,path)
