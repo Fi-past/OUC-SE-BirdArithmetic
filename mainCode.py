@@ -17,10 +17,10 @@ import torch.nn.functional as F
 from torchvision import transforms, models
 
 
-# 看看是不是样本不均衡的问题 在dataset里面看吧
-
 if __name__ == "__main__":
-
+    # 准备模型训练
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     # 获取dataset
     imgTrainPath='../data/bird/train_set'
     imgValPath='../data/bird/val_set'
@@ -29,29 +29,37 @@ if __name__ == "__main__":
     bird_data_Trainset=birdTrainDataSet(imgTrainPath,txtClassPath,True)
     bird_data_Valset=birdTrainDataSet(imgValPath,txtClassPath,False)
 
-    weights=[]
-    for data, label in bird_data_Trainset:
-        weights.append(bird_data_Trainset.class_num_list[label])
+    # weights=[]
+    # for data, label in bird_data_Trainset:
+    #     weights.append(bird_data_Trainset.class_num_list[label])
 
-    # 注意这里的weights应为所有样本的权重序列，其长度为所有样本长度
-    sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(bird_data_Trainset),replacement=True)
+    # # 注意这里的weights应为所有样本的权重序列，其长度为所有样本长度
+    # sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(bird_data_Trainset),replacement=True)
 
     # 获取dataloader
-    b_s=512
-    trainloader = DataLoader(bird_data_Trainset,batch_size=b_s,num_workers=2, sampler = sampler)
+    b_s=16
+    trainloader = DataLoader(bird_data_Trainset,batch_size=b_s,num_workers=2)
+    # trainloader = DataLoader(bird_data_Trainset,batch_size=b_s,num_workers=2, sampler = sampler)
     valloader = DataLoader(bird_data_Valset,batch_size=b_s,shuffle=False,num_workers=2)
 
     # 获取预训练的denseNet模型
     denseNetModel = getImageNet()
     # 交叉熵损失函数
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=torch.from_numpy(bird_data_Trainset.class_num_list).to(device).float())
     # 优化器
     # optimizer=optim.SGD(denseNetModel.parameters(), lr=0.001, momentum=0.9, factor=0.6)
-    lr=0.001
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
+    
+    lr=0.0015
+    optimizer = optim.Adam([
+            {"params":denseNetModel.classifier.parameters(),"lr":lr},
+            {"params":denseNetModel.features.parameters(),"lr":1e-6},
+            ],
+            lr=lr, #默认参数
+        )
 
-    # 准备模型训练
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
+
 
     path='../model/bird_v1.pt'
     path_new='../model/bird_new.pt'
@@ -93,6 +101,11 @@ if __name__ == "__main__":
 
             loss = criterion(output, target)
             loss.backward()
+
+            # 梯度累积
+            if batch%3!=0:
+                continue
+
             optimizer.step()
 
             train_loss+=loss.item()
@@ -141,11 +154,15 @@ if __name__ == "__main__":
             print()
             print('模型更新成功~')
             print()
-        elif abs(valAcc-maxValAcc)<0.5:
-          lr=lr*0.8
-          optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
-          print('优化器更新成功')
-        else:
-          pass
-        
+        # elif abs(valAcc-maxValAcc)<0.5:
+        #   lr=lr*0.8
+        #   optimizer = optim.Adam(filter(lambda p: p.requires_grad, denseNetModel.parameters()),lr=lr)
+        #   print('优化器更新成功')
+        # else:
+        #   pass
+        scheduler.step()
+        # 打印当前学习率
+        print('当前学习率为：',end=' ')
+        print(optimizer.state_dict()['param_groups'][0]['lr'])
+
         torch.save(denseNetModel,path_new)

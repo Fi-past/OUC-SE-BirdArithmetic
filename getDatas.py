@@ -13,26 +13,20 @@ preprocessTrain = transforms.Compose([
     # transforms.Resize([230, 230]),
     transforms.Resize([224, 224]),
     transforms.RandomHorizontalFlip(p=0.5),
-    # transforms.RandomVerticalFlip(p=0.08),
+    # transforms.RandomVerticalFlip(p=0.5),
     # transforms.RandomRotation(15),
     # 功能：修改修改亮度、对比度和饱和度
-    transforms.ColorJitter(brightness=0.05, contrast=0.05, hue=0.05),
+    transforms.ColorJitter(brightness=0.5, contrast=0.5,hue=0.5),
 
     transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.5,0.5,0.5],
-        std=[0.5,0.5,0.5]
-    ),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 # 测试验证集预处理
 preprocessVal_Test = transforms.Compose([
     transforms.Resize([224, 224]),
     transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.5,0.5,0.5],
-        std=[0.5,0.5,0.5]
-    ),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 # 从文件中读取数据
@@ -105,7 +99,7 @@ class birdTrainDataSet(Dataset):
             self.class_num_list[label]+=1
         self.class_num_list=1/np.array(self.class_num_list)
 
-        # print(self.class_num_list)
+        # print(','.join([str(s) for s in self.class_num_list]))
         # 不确定：根据torch种平衡样本的语法，应该取倒数
         # self.class_num_list=1/np.array(self.class_num_list)
 
@@ -135,6 +129,8 @@ if __name__ == '__main__' :
     weights=[]
     for data, label in train_dataset:
         weights.append(train_dataset.class_num_list[label])
+
+    print(','.join([str(s) for s in weights]))
 
     batch_size=64
     # 注意这里的weights应为所有样本的权重序列，其长度为所有样本长度

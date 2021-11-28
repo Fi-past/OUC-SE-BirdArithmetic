@@ -10,8 +10,8 @@ def getImageNet():
     NetModel = models.densenet121(pretrained=True)
     # print(NetModel.classifier)
 
-    for param in NetModel.parameters():
-        param.requires_grad = False
+    # for param in NetModel.parameters():
+    #     param.requires_grad = False
         # print(param.shape)
 
     classifier = nn.Sequential(OrderedDict([
